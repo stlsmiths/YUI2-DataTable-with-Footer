@@ -1,0 +1,440 @@
+<html>
+<head>
+	<title>YUI DataTable Exercises</title>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+	<script src="http://yui.yahooapis.com/2.9.0/build/yuiloader/yuiloader-min.js"></script>
+
+	<script type="text/javascript" src="syntax/scripts/shCore.js"></script>
+	<script type="text/javascript" src="syntax/scripts/shBrushJScript.js"></script>
+
+	<script type="text/javascript" src="syntax/scripts/shBrushXml.js"></script>
+	<script type="text/javascript" src="syntax/scripts/shBrushPhp.js"></script>
+
+	<link href="syntax/styles/shCore.css" rel="stylesheet" type="text/css" />
+	<link href="syntax/styles/shThemeDefault.css" rel="stylesheet" type="text/css" />
+	<link href="ba_example.css" rel="stylesheet" type="text/css" />
+
+<script type="text/javascript">
+var loader = new YAHOO.util.YUILoader( {
+    require: [  'reset', 'grids', 'base', "datatable", "datasource", "json", "container", "get" ],
+// 	base:	'../yui/build/',
+	allowRollup : true, 
+    loadOptional: true
+});
+
+loader.insert({
+    // The function to call when all script/css resources have been loaded
+    onSuccess: function() {
+
+	//
+	//  Aliases for YUI placeholders
+	//
+		var YDom = YAHOO.util.Dom, 
+			YUtil = YAHOO.util, 
+			YEvent = YAHOO.util.Event, 
+			YLang = YAHOO.lang, 
+			YConnect = YUtil.Connect;
+
+		YAHOO.util.Event.onDOMReady( function() {
+		//
+		//  Local storage ...
+		//	
+			var myDS = null,
+				myDT = null;
+			
+		//	
+		// define local JS array of objects ...
+		//   NOTE : all items are "string" items, we will convert them to Numbers in the parser ....
+		//	
+			var jsCustomerData = [
+				{ cust_id:"1",cust_name:"George Simon",cust_status:"1",cust_location:"New York",cust_orders:"17", cust_ordtotal:"54543.92" },
+				{ cust_id:"2",cust_name:"Angela Marconi",cust_status:"1",cust_location:"Florence, Italy",cust_orders:"4", cust_ordtotal:"2708.34"},
+				{ cust_id:"3",cust_name:"Nancy Keeler",cust_status:"2",cust_location:"Chicago",cust_orders:"48", cust_ordtotal:"30017.81"},
+				{ cust_id:"4",cust_name:"Mickey Gates",cust_status:"1",cust_location:"Seattle",cust_orders:"2", cust_ordtotal:"1204.07"},
+				{ cust_id:"5",cust_name:"Wuchan Hsu",cust_status:"3",cust_location:"Beijing",cust_orders:"23", cust_ordtotal:"18452.39"},
+				{ cust_id:"6",cust_name:"Dmitri Zaganuv",cust_status:"2",cust_location:"Russia",cust_orders:"0", cust_ordtotal:"0"},
+				{ cust_id:"7",cust_name:"Francois Pierre",cust_status:"1",cust_location:"Paris",cust_orders:"8", cust_ordtotal:"4506.33"},
+				{ cust_id:"8",cust_name:"Frank Matters",cust_status:"1",cust_location:"Dallas",cust_orders:"37", cust_ordtotal:"43098.11"},
+				{ cust_id:"9",cust_name:"Jorges Castille",cust_status:"3",cust_location:"Barbados",cust_orders:"17", cust_ordtotal:"10093.23"},
+				{ cust_id:"10",cust_name:"Mary Karlin",cust_status:"2",cust_location:"Cleveland",cust_orders:"0", cust_ordtotal:"0"},
+				{ cust_id:"11",cust_name:"Julia Bohrmann",cust_status:"1",cust_location:"Oslo",cust_orders:"45", cust_ordtotal:"64907.25"},
+				{ cust_id:"12",cust_name:"Scott August",cust_status:"1",cust_location:"Miami",cust_orders:"29", cust_ordtotal:"11983.01"},
+				{ cust_id:"13",cust_name:"Abelardo Justin",cust_status:"2",cust_location:"Cusco",cust_orders:"8", cust_ordtotal:"1009.23"},
+				{ cust_id:"14",cust_name:"Marina deFrees",cust_status:"1",cust_location:"San Juan",cust_orders:"5", cust_ordtotal:"848.62"}  
+			];
+			
+				
+		//
+		//  At startup, create the datasource to point to local JSARRAY
+		//	
+			myDS = new YUtil.DataSource( jsCustomerData );
+			myDS.responseType = YUtil.DataSource.TYPE_JSARRAY;
+			myDS.responseSchema = {
+				fields : [ 	'cust_id', 'cust_name', 'cust_location', 
+							{ key: 'cust_status', parser: 'number' },  // convert next 3 fields from string to Number 
+							{ key: 'cust_orders', parser: 'number' },
+							{ key: 'cust_ordtotal', parser: 'number' }  ]
+			};
+			
+		//
+		//  Define a custom formatter and currency sorting
+		//	
+
+			YAHOO.widget.DataTable.Formatter['array_assign'] = function(el, oRecord, oColumn, oData) {
+				var my_array = oColumn.fmtOptions || oColumn.dropdownOptions || {};
+				for(var i=0; i<my_array.length; i++)
+					if ( my_array[i].value == oData ) el.innerHTML = my_array[i].label; 
+			};
+
+			var mySortCurrency = function (a,b,desc) {
+				var al=a.getData('cust_ordtotal');
+				var bl=b.getData('cust_ordtotal');
+				return  YUtil.Sort.compare( al, bl, desc );
+			}
+	
+		// 
+		//  Define the PARENT columns and DataSource fields
+		//	
+			var ddoptions = [ {value:1,label:'Active'}, {value:2,label:'Hold'}, {value:3,label:'Closed'} ];	
+			
+			var myCols = [	{ key: "cust_id", 	hidden: true, isPrimaryKey: true, className:"align-center" }, 
+							{ key: "cust_name", label: "Customer Name",  sortable: true,  resizeable: true }, 
+							{ key: "cust_location",  label: "Customer Location", editor: "textarea", sortable: true,  resizeable: true }, 
+							{ key: 'cust_status', label: 'Status', sortable: true, className:"align-center",
+								dropdownOptions:ddoptions, formatter:"array_assign" },
+							{ key: 'cust_orders', label: 'No. of Orders', sortable: true, resizeable:true, className:"align-center", 
+								editor:"textbox", editorOptions: {validator: YAHOO.widget.DataTable.validateNumber} },
+							{ key: 'cust_ordtotal', label: 'Order Total', sortable: true, formatter:"currency", width:80,
+									sortOptions:{ sortFunction:mySortCurrency }, className:"align-right",
+									editor:"textbox", editorOptions: {validator: YAHOO.widget.DataTable.validateNumber} }
+						];
+				
+	
+		//
+		//  Setup the configuration for this datatable
+		//		
+			var myConfig = {
+				initialRequest: 	"iopt=data_custs_DTSF",
+				selectionMode: 		"single",
+				currencyOptions:	{ prefix: "$ ", decimalPlaces: 2, 	decimalSeparator: ".", thousandsSeparator: ","},
+				MSG_EMPTY: 			"No customers found!",
+				MSG_LOADING: 		"Loading customer data ..."
+			};
+			
+		//
+		//  Create the datatable
+		//	
+			myDT = new YAHOO.widget.DataTable( 'divTable', myCols, myDS, myConfig );
+			
+		//
+		//  Cell editing is available for 'No. of Orders' and 'Order Total' columns
+		//	
+			myDT.on('cellDblclickEvent', myDT.onEventShowCellEditor);
+			
+			
+		//
+		//  Create a TFOOT and append to TABLE
+		//   ( this method is based on Satyam, ref http://www.satyam.com.ar/yui/2.6.0/invoice.html )
+		//	
+			var tfootEl = myDT.getTableEl().appendChild( document.createElement('tfoot'));
+			YDom.addClass(tfootEl,"yui-dt-data");
+			
+			var tfootTr = tfootEl.appendChild(document.createElement('tr'));
+			YDom.addClass( tfootTr,"yui-dt-even");
+			
+			var th1 = tfootTr.appendChild(document.createElement('th'));
+			YDom.setAttribute(th1, 'id', 'tfoot_th');
+			YDom.setAttribute(th1, 'colSpan', '4');
+			
+			var td1 = tfootTr.appendChild(document.createElement('td'));
+			YDom.setAttribute(td1, 'id', 'tfoot_orders');
+			YDom.addClass(td1,'align-center');
+
+			var td2 = tfootTr.appendChild(document.createElement('td'));
+			YDom.setAttribute(td2, 'id', 'tfoot_ototal');
+			YDom.addClass(td2,'align-right');
+			
+			var tfootHTML = '<tr class="yui-dt-even"><th colspan="4" id="tfoot_th"></th>';
+			tfootHTML += '<td id="tfoot_orders" class="align-center"></td>';
+			tfootHTML += '<td id="tfoot_ototal" class="align-right"></td></tr>';
+
+		// Got a bug when using .innerHTML in IE, so that's why I re-coded as createElements ...			
+		//	tfootEl.innerHTML = tfootHTML;
+
+			
+		//
+		//  Create a listener on postRenderEvent, so after every rendering of the table
+		//   the footer contents will be updated.
+		//   (i.e. this is called after cell edits, insertions, deletions, column sorting, etc...)
+		//	
+			myDT.subscribe('postRenderEvent', function(oArgs){
+				var CS = this.getColumnSet().keys,
+					RS = this.getRecordSet(),
+					onum = 0.,
+					ototal = 0.,
+					rpad = '&nbsp;&nbsp; ';
+					
+				for(var i=0; i<RS.getLength(); i++) {
+					var recData = this.getRecord(i).getData();
+					onum += parseFloat(recData['cust_orders']);
+					ototal += parseFloat(recData['cust_ordtotal']);
+				}
+
+				YDom.get('tfoot_th').innerHTML = "TOTALS ( " + RS.getLength() + " Orders) : ";	
+				YDom.get('tfoot_orders').innerHTML = YAHOO.util.Number.format( onum, { thousandsSeparator:','});
+				YDom.get('tfoot_ototal').innerHTML = YAHOO.util.Number.format( ototal, {prefix: "$ ", decimalPlaces: 2, decimalSeparator: ".", thousandsSeparator: ","} ) + rpad;
+									
+			});
+
+			SyntaxHighlighter.highlight();			
+			
+		});
+
+    },
+	timeout: 5000,
+	combine: true
+	
+});  	
+		
+</script>
+
+</head>
+
+<body class=" yui-skin-sam">
+<div align="left">
+	<h2>YUI 2 DataTable Example : Footer for a non-Scrolling DataTable</h2>
+	<p>
+		Demonstrates a Simple non-scrolling DataTable with an updating footer.  This example uses a local JavaScript array (TYPE_JSARRAY) and 
+		<br/>includes cell-editing of the last two columns.  Cell updates are refreshed in the footer at the bottom.
+		<br/>Also, the footer changes width with columns 1 thru 3, they are resizable.
+	</p>
+
+	<div id="divTable"></div>
+	
+
+	<p></p>
+	<p></p>
+	This example creates a TFOOT element and appends it to the TABLE DOM element that is created by DataTable.  The first few columns of the TFOOT 
+	<br/>are linked with a "colspan" property.  
+	<br/><br/>I attach a listener to the DataTable's "postRenderEvent" event that searches through the recordset and updates the footer elements.
+	<br/></br>The "postRenderEvent" is fired whenever a recordset refresh occurs, after cell-editing, record inserts/deletes, etc...
+	<p></p>
+	<p></p>
+
+	<p></p>
+	<p></p>
+	<p></p>
+	<h4>References for this Example:</h4>
+	<ul>
+		<li>Invoice example from Satyam (Daniel Barreiro) ... <a href='http://www.satyam.com.ar/yui/2.6.0/invoice.html' target='_blank'>Invoice Summary</a> - this was a great help for this simple example!</li>
+		<li>YUILibrary posting from Matt Parker regarding a great extension he wrote for footers ... <a href='http://yuilibrary.com/forum/viewtopic.php?f=90&t=6405' target='_blank'>DataTable footer summary statistics</a></li>
+		<li>I posted an extension for Scrolling DataTable footers here ... <a href='http://yuilibrary.com/forum/viewtopic.php?p=25603' target='_blank'>Scrolling DataTable footer extension</a></li> and live link is here <a href="http://blunderalong.com/pub/dt_scroll_foot.html" target="_blank">http://blunderalong.com/pub/dt_scroll_foot.html</a>
+	</ul>
+		
+	<p></p>
+	<div class="example">
+
+	You can always see the entire source code for this example by using your browser's "show page source code" capability, 
+	<br/>usually Right-Click in the browser main page. 
+
+		<p></p><p>Any comments or helpful recommendations can be posted on the <a href='http://yuilibrary.com/forum/viewforum.php?f=90' target='_blank'>YUILibrary - YUI 2 forum</a> where I visit  
+		under the username <a href='http://yuilibrary.com/forum/memberlist.php?mode=viewprofile&u=5872' target='_blank'>stlsmiths</a>.  <br/>Thanks!</p>
+
+
+	<p></p>
+	<p></p>
+
+	HTML / CSS markup:
+	<pre class="brush:xml">
+	<style type="text/css">
+	/*   These are styles I created for TD alignment with YUI DataTable   */
+	.yui-skin-sam .yui-dt .align-right, th.align-right, td.align-right, div.align-right, span.align-right {
+	    text-align:right;
+		}
+	
+	.yui-skin-sam .yui-dt .align-center, th.align-center, td.align-center, div.align-center, span.align-center {
+		text-align:center;
+	}
+	
+	.yui-skin-sam .yui-dt .align-left, th.align-left, td.align-left, div.align-left, span.align-left {
+		text-align:left;
+	}
+	</style>	
+
+	<!-- Define a container for the table   -->	
+	<div id="divTable"></div>
+
+	</pre>
+	
+	JavaScript code ... for this DEMO Page :	
+	<script type="syntaxhighlighter" class="brush:js; collapse:false;"><![CDATA[
+	//
+	//  Aliases for YUI placeholders
+	//
+		var YDom = YAHOO.util.Dom, 
+			YUtil = YAHOO.util, 
+			YEvent = YAHOO.util.Event, 
+			YLang = YAHOO.lang, 
+			YConnect = YUtil.Connect;
+
+		YAHOO.util.Event.onDOMReady( function() {
+		//
+		//  Local storage ...
+		//	
+			var myDS = null,
+				myDT = null;
+			
+		//	
+		// define local JS array of objects ...
+		//   NOTE : all items are "string" items, we will convert them to Numbers in the parser ....
+		//	
+			var jsCustomerData = [
+				{ cust_id:"1",cust_name:"George Simon",cust_status:"1",cust_location:"New York",cust_orders:"17", cust_ordtotal:"54543.92" },
+				{ cust_id:"2",cust_name:"Angela Marconi",cust_status:"1",cust_location:"Florence, Italy",cust_orders:"4", cust_ordtotal:"2708.34"},
+				{ cust_id:"3",cust_name:"Nancy Keeler",cust_status:"2",cust_location:"Chicago",cust_orders:"48", cust_ordtotal:"30017.81"},
+				{ cust_id:"4",cust_name:"Mickey Gates",cust_status:"1",cust_location:"Seattle",cust_orders:"2", cust_ordtotal:"1204.07"},
+				{ cust_id:"5",cust_name:"Wuchan Hsu",cust_status:"3",cust_location:"Beijing",cust_orders:"23", cust_ordtotal:"18452.39"},
+				{ cust_id:"6",cust_name:"Dmitri Zaganuv",cust_status:"2",cust_location:"Russia",cust_orders:"0", cust_ordtotal:"0"},
+				{ cust_id:"7",cust_name:"Francois Pierre",cust_status:"1",cust_location:"Paris",cust_orders:"8", cust_ordtotal:"4506.33"},
+				{ cust_id:"8",cust_name:"Frank Matters",cust_status:"1",cust_location:"Dallas",cust_orders:"37", cust_ordtotal:"43098.11"},
+				{ cust_id:"9",cust_name:"Jorges Castille",cust_status:"3",cust_location:"Barbados",cust_orders:"17", cust_ordtotal:"10093.23"},
+				{ cust_id:"10",cust_name:"Mary Karlin",cust_status:"2",cust_location:"Cleveland",cust_orders:"0", cust_ordtotal:"0"},
+				{ cust_id:"11",cust_name:"Julia Bohrmann",cust_status:"1",cust_location:"Oslo",cust_orders:"45", cust_ordtotal:"64907.25"},
+				{ cust_id:"12",cust_name:"Scott August",cust_status:"1",cust_location:"Miami",cust_orders:"29", cust_ordtotal:"11983.01"},
+				{ cust_id:"13",cust_name:"Abelardo Justin",cust_status:"2",cust_location:"Cusco",cust_orders:"8", cust_ordtotal:"1009.23"},
+				{ cust_id:"14",cust_name:"Marina deFrees",cust_status:"1",cust_location:"San Juan",cust_orders:"5", cust_ordtotal:"848.62"}  
+			];
+			
+				
+		//
+		//  At startup, create the datasource to point to local JSARRAY
+		//	
+			myDS = new YUtil.DataSource( jsCustomerData );
+			myDS.responseType = YUtil.DataSource.TYPE_JSARRAY;
+			myDS.responseSchema = {
+				fields : [ 	'cust_id', 'cust_name', 'cust_location', 
+							{ key: 'cust_status', parser: 'number' },  // convert next 3 fields from string to Number 
+							{ key: 'cust_orders', parser: 'number' },
+							{ key: 'cust_ordtotal', parser: 'number' }  ]
+			};
+			
+		//
+		//  Define a custom formatter and currency sorting
+		//	
+
+			YAHOO.widget.DataTable.Formatter['array_assign'] = function(el, oRecord, oColumn, oData) {
+				var my_array = oColumn.fmtOptions || oColumn.dropdownOptions || {};
+				for(var i=0; i<my_array.length; i++)
+					if ( my_array[i].value == oData ) el.innerHTML = my_array[i].label; 
+			};
+
+			var mySortCurrency = function (a,b,desc) {
+				var al=a.getData('cust_ordtotal');
+				var bl=b.getData('cust_ordtotal');
+				return  YUtil.Sort.compare( al, bl, desc );
+			}
+	
+		// 
+		//  Define the PARENT columns and DataSource fields
+		//	
+			var ddoptions = [ {value:1,label:'Active'}, {value:2,label:'Hold'}, {value:3,label:'Closed'} ];	
+			
+			var myCols = [	{ key: "cust_id", 	hidden: true, isPrimaryKey: true, className:"align-center" }, 
+							{ key: "cust_name", label: "Customer Name",  sortable: true,  resizeable: true }, 
+							{ key: "cust_location",  label: "Customer Location", editor: "textarea", sortable: true,  resizeable: true }, 
+							{ key: 'cust_status', label: 'Status', sortable: true, className:"align-center",
+								dropdownOptions:ddoptions, formatter:"array_assign" },
+							{ key: 'cust_orders', label: 'No. of Orders', sortable: true, resizeable:true, className:"align-center", 
+								editor:"textbox", editorOptions: {validator: YAHOO.widget.DataTable.validateNumber} },
+							{ key: 'cust_ordtotal', label: 'Order Total', sortable: true, formatter:"currency", width:80,
+									sortOptions:{ sortFunction:mySortCurrency }, className:"align-right",
+									editor:"textbox", editorOptions: {validator: YAHOO.widget.DataTable.validateNumber} }
+						];
+				
+	
+		//
+		//  Setup the configuration for this datatable
+		//		
+			var myConfig = {
+				initialRequest: 	"iopt=data_custs_DTSF",
+				selectionMode: 		"single",
+				currencyOptions:	{ prefix: "$ ", decimalPlaces: 2, 	decimalSeparator: ".", thousandsSeparator: ","},
+				MSG_EMPTY: 			"No customers found!",
+				MSG_LOADING: 		"Loading customer data ..."
+			};
+			
+		//
+		//  Create the datatable
+		//	
+			myDT = new YAHOO.widget.DataTable( 'divTable', myCols, myDS, myConfig );
+			
+		//
+		//  Cell editing is available for 'No. of Orders' and 'Order Total' columns
+		//	
+			myDT.on('cellDblclickEvent', myDT.onEventShowCellEditor);
+			
+			
+		//
+		//  Create a TFOOT and append to TABLE
+		//   ( this method is based on Satyam, ref http://www.satyam.com.ar/yui/2.6.0/invoice.html )
+		//	
+			var tfootEl = myDT.getTableEl().appendChild( document.createElement('tfoot'));
+			YDom.addClass(tfootEl,"yui-dt-data");
+			
+			var tfootTr = tfootEl.appendChild(document.createElement('tr'));
+			YDom.addClass( tfootTr,"yui-dt-even");
+			
+			var th1 = tfootTr.appendChild(document.createElement('th'));
+			YDom.setAttribute(th1, 'id', 'tfoot_th');
+			YDom.setAttribute(th1, 'colSpan', '4');
+			
+			var td1 = tfootTr.appendChild(document.createElement('td'));
+			YDom.setAttribute(td1, 'id', 'tfoot_orders');
+			YDom.addClass(td1,'align-center');
+
+			var td2 = tfootTr.appendChild(document.createElement('td'));
+			YDom.setAttribute(td2, 'id', 'tfoot_ototal');
+			YDom.addClass(td2,'align-right');
+			
+			var tfootHTML = '<tr class="yui-dt-even"><th colspan="4" id="tfoot_th"></th>';
+			tfootHTML += '<td id="tfoot_orders" class="align-center"></td>';
+			tfootHTML += '<td id="tfoot_ototal" class="align-right"></td></tr>';
+
+		// Got a bug when using .innerHTML in IE, so that's why I re-coded as createElements ...			
+		//	tfootEl.innerHTML = tfootHTML;
+
+			
+		//
+		//  Create a listener on postRenderEvent, so after every rendering of the table
+		//   the footer contents will be updated.
+		//   (i.e. this is called after cell edits, insertions, deletions, column sorting, etc...)
+		//	
+			myDT.subscribe('postRenderEvent', function(oArgs){
+				var CS = this.getColumnSet().keys,
+					RS = this.getRecordSet(),
+					onum = 0.,
+					ototal = 0.,
+					rpad = '&nbsp;&nbsp; ';
+					
+				for(var i=0; i<RS.getLength(); i++) {
+					var recData = this.getRecord(i).getData();
+					onum += parseFloat(recData['cust_orders']);
+					ototal += parseFloat(recData['cust_ordtotal']);
+				}
+
+				YDom.get('tfoot_th').innerHTML = "TOTALS ( " + RS.getLength() + " Orders) : ";	
+				YDom.get('tfoot_orders').innerHTML = YAHOO.util.Number.format( onum, { thousandsSeparator:','});
+				YDom.get('tfoot_ototal').innerHTML = YAHOO.util.Number.format( ototal, {prefix: "$ ", decimalPlaces: 2, decimalSeparator: ".", thousandsSeparator: ","} ) + rpad;
+									
+			});
+
+		});  // end of onDOMReady
+	]]></script>
+
+	<p></p>
+	</div>
+	</div>	
+</div>	
+</body>
+</html>

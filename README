@@ -1,0 +1,24 @@
+YUI2 Example - Adding an updatable Footer to a DataTable (non-scrolling)
+
+This is a simple example that shows how to create a footer for a standard non-scrolling DataTable
+in YUI2.  As changes are made to data, like cell editing or record inserts or deletions, the footer 
+will update it's values.  Also, as columns are resized the footer will resize accordingly.
+(If you want to see a scrolling-DT footer there is another posting here:https://github.com/stlsmiths/YUI2-Scrolling-DataTable-Footer)
+
+The technique is very straightforward, and based upon Satyam's method (see http://www.satyam.com.ar/yui/2.6.0/invoice.html).
+
+A TFOOT Dom element is added to the bottom of the DataTable's TBODY, the heading for footer is a TH and 
+the columns we wish to display are TD's.  
+
+The only trick here, and where I differ from Satyam's example, is I define a listener attached to the 
+DataTable's "postRenderEvent" to update the footer contents.  This is handy because "postRender" fires 
+whenever a column re-sorts, cell edits, etc... basically anytime a change is made to the underlying recordset.
+
+A live working example (fully documented) of this is available here : http://www.blunderalong.com/pub/dt_noscroll_foot.html
+
+This has been tested in FF 3.5, Safari, Chrome and IE 7/9.
+
+Any questions can be posted here or on YUILibrary to my username:stlsmiths. 
+
+NOTE:  The code sample here is for reference, I haven't included the non-essential example CSS or syntax highlighter 
+libraries.
